@@ -2,7 +2,6 @@ package com.example.auto_2048
 
 import android.graphics.Bitmap
 import android.graphics.Color
-import android.util.Log
 import com.google.android.gms.tasks.Tasks
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
@@ -227,7 +226,7 @@ object VisionProcessor {
         if (!GameConfig.isManualMode || forceAutoDetect) {
             detectBoard(bitmap)
             if (forceAutoDetect) {
-                Log.d("Auto2048", "analyze: forced re-detect, new bounds x[${GameConfig.detectedXStart},${GameConfig.detectedXEnd}] y[${GameConfig.detectedYStart},${GameConfig.detectedYEnd}]")
+                Logger.d("Vision", "analyze: forced re-detect, new bounds x[${GameConfig.detectedXStart},${GameConfig.detectedXEnd}] y[${GameConfig.detectedYStart},${GameConfig.detectedYEnd}]")
                 forceAutoDetect = false
             }
         }
@@ -246,7 +245,7 @@ object VisionProcessor {
             lastObservedGrid = emptyList()
             OverlayService.samplePoints = emptyList()
             OverlayService.uncertainCells = emptySet()
-            Log.d("Auto2048", "analyze: Board bounds invalid xStart=$xStart xEnd=$xEnd yStart=$yStart yEnd=$yEnd")
+            Logger.d("Vision", "analyze: Board bounds invalid xStart=$xStart xEnd=$xEnd yStart=$yStart yEnd=$yEnd")
             return emptyList()
         }
 
@@ -268,7 +267,7 @@ object VisionProcessor {
             lastObservedGrid = emptyList()
             OverlayService.samplePoints = emptyList()
             OverlayService.uncertainCells = emptySet()
-            Log.d("Auto2048", "analyze: Cells too small cellWidth=$cellWidth cellHeight=$cellHeight")
+            Logger.d("Vision", "analyze: Cells too small cellWidth=$cellWidth cellHeight=$cellHeight")
             return emptyList()
         }
 
@@ -414,7 +413,7 @@ object VisionProcessor {
             OverlayService.lastSamplePoints = cellSamples
         }
         lastDebugCells = debugCells
-        Log.d("Auto2048", "vision-debug " + debugCells.joinToString(" "))
+        Logger.d("Vision", "vision-debug " + debugCells.joinToString(" "))
         expectedBoard = emptyList()
 
         val ocrResult = if (needsOcr.isNotEmpty()) {
@@ -519,7 +518,7 @@ object VisionProcessor {
         } else {
             "OCR fallback: ${ocrResult.values.size}, uncertain: ${uncertain.size}"
         }
-        Log.d("Auto2048", "$lastDiagnostics; grid=${provisionalGrid.joinToString(",")}")
+        Logger.d("Vision", "$lastDiagnostics; grid=${provisionalGrid.joinToString(",")}")
         // Commit the grid even if some cells are uncertain. lastOcrVerifiedGrid
         // only holds OCR-confirmed values, so mid-range tiles that were
         // colour-committed without OCR will be retried next frame and will
@@ -572,7 +571,7 @@ object VisionProcessor {
             lastReliableGrid = provisionalGrid.toList()
             lastReliableGridTimestampMs = android.os.SystemClock.elapsedRealtime()
             refreshModalCache(bitmap)
-            Log.d("Auto2048", "analyze: All 16 OCR-confirmed, grid=${provisionalGrid.joinToString(",")}")
+            Logger.d("Vision", "analyze: All 16 OCR-confirmed, grid=${provisionalGrid.joinToString(",")}")
             solverGrid
         } else if (lastReliableGrid.size == 16) {
             // Some cells were not OCR-confirmed. If we have a recent reliable grid,
@@ -584,7 +583,7 @@ object VisionProcessor {
                 val smoothedGrid = solverGrid.mapIndexed { index, value ->
                     if (value < 0) lastReliableGrid.getOrElse(index) { 0 } else value
                 }
-                Log.d("Auto2048", "Temporal smoothing: ${solverGrid.count { it < 0 }}/16 cells uncertain (age=${ageMs}ms)")
+                Logger.d("Vision", "Temporal smoothing: ${solverGrid.count { it < 0 }}/16 cells uncertain (age=${ageMs}ms)")
                 refreshModalCache(bitmap)
                 smoothedGrid
             } else {
@@ -592,7 +591,7 @@ object VisionProcessor {
                 lastReliableGrid = provisionalGrid.toList()
                 lastReliableGridTimestampMs = android.os.SystemClock.elapsedRealtime()
                 refreshModalCache(bitmap)
-                Log.d("Auto2048", "analyze: Fallback stale, grid=${provisionalGrid.joinToString(",")}")
+                Logger.d("Vision", "analyze: Fallback stale, grid=${provisionalGrid.joinToString(",")}")
                 solverGrid
             }
         } else {
@@ -600,7 +599,7 @@ object VisionProcessor {
             lastReliableGrid = provisionalGrid.toList()
             lastReliableGridTimestampMs = android.os.SystemClock.elapsedRealtime()
             refreshModalCache(bitmap)
-            Log.d("Auto2048", "analyze: No reliable grid, grid=${provisionalGrid.joinToString(",")}")
+            Logger.d("Vision", "analyze: No reliable grid, grid=${provisionalGrid.joinToString(",")}")
             solverGrid
         }
     }
@@ -939,8 +938,8 @@ object VisionProcessor {
             GameConfig.detectedYEnd = (lastY * screenScaleY).toInt()
             GameConfig.detectedXStart = (minX * screenScaleX).toInt()
             GameConfig.detectedXEnd = (maxX * screenScaleX).toInt()
-            Log.d(
-                "Auto2048",
+            Logger.d(
+                            "Vision",
                 "detectBoard: FOUND tile-based minY=$minY maxY=$maxY size=$boardSize minX=$minX maxX=$maxX → screen x[${GameConfig.detectedXStart},${GameConfig.detectedXEnd}] y[${GameConfig.detectedYStart},${GameConfig.detectedYEnd}]"
             )
         } else {
@@ -956,8 +955,8 @@ object VisionProcessor {
             val p1 = bitmap.getPixel(w / 2, sampleY1)
             val p2 = bitmap.getPixel(w / 2, sampleY2)
             val p3 = bitmap.getPixel(w / 2, sampleY3)
-            Log.d(
-                "Auto2048",
+            Logger.d(
+                            "Vision",
                 "detectBoard: NOT FOUND scan[$startScan..$endScan] pixels: y$sampleY1=(${Color.red(p1)},${Color.green(p1)},${Color.blue(p1)}) y$sampleY2=(${Color.red(p2)},${Color.green(p2)},${Color.blue(p2)}) y$sampleY3=(${Color.red(p3)},${Color.green(p3)},${Color.blue(p3)})"
             )
         }
@@ -1198,14 +1197,14 @@ object VisionProcessor {
                 android.graphics.Canvas(crop).drawBitmap(bitmap, -left.toFloat(), -top.toFloat(), null)
             }
         } catch (e: Exception) {
-            Log.w("Auto2048", "OCR crop failed: ${e.message}")
+            Logger.w("Vision", "OCR crop failed: ${e.message}")
             return OcrBoardResult(mutableMapOf(), false)
         }
         val task = try {
             textRecognizer.process(InputImage.fromBitmap(boardBitmap, 0))
         } catch (e: Exception) {
             if (!boardBitmap.isRecycled) boardBitmap.recycle()
-            Log.w("Auto2048", "OCR start failed: ${e.message}")
+            Logger.w("Vision", "OCR start failed: ${e.message}")
             return OcrBoardResult(mutableMapOf(), false)
         }
 
@@ -1237,7 +1236,7 @@ object VisionProcessor {
             }
             OcrBoardResult(values, true)
         } catch (e: Exception) {
-            Log.w("Auto2048", "OCR fallback failed: ${e.message}")
+            Logger.w("Vision", "OCR fallback failed: ${e.message}")
             OcrBoardResult(mutableMapOf(), false)
         } finally {
             if (task.isComplete) {

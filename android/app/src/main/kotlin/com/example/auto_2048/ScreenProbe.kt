@@ -4,8 +4,6 @@ import android.media.projection.MediaProjection
 import android.os.Handler
 import android.os.HandlerThread
 import android.os.Looper
-import android.util.Log
-
 /**
  * Result of a single [ScreenProbe.probe] call. The two bits the solver
  * cares about - whether the screen is in a terminal state and, if so,
@@ -118,15 +116,15 @@ class ScreenProbe {
             // rather than Unknown, so the solver proceeds instead of waiting.
             // The full analysis will happen when getGridState is called.
             val effectiveState = if (gen == 0L) {
-                Log.d("Auto2048", "ScreenProbe: no analysis yet (gen=0), assuming Playing")
+                Logger.d("ScreenProbe", "ScreenProbe: no analysis yet (gen=0), assuming Playing")
                 VisionProcessor.ModalState.Playing
             } else {
                 state
             }
 
             val outcome = ScreenProbeOutcome.fromModalState(effectiveState)
-            Log.d(
-                "Auto2048",
+                        Logger.d(
+                            "ScreenProbe",
                 "ScreenProbe ${if (gen == 0L) "MISS" else "cache-hit"} ${effectiveState.name} gen=$gen: $diagnostics"
             )
             mainHandler.post { onResult(outcome, diagnostics) }

@@ -1,6 +1,5 @@
 package com.example.auto_2048
 
-import android.util.Log
 import kotlin.math.abs
 import kotlin.math.ln
 import kotlin.math.max
@@ -206,7 +205,7 @@ object GameSolver {
                 // Wrap in try/catch so JVM unit tests (where android.util.Log is
                 // not mocked) can still exercise this path without throwing.
                 try {
-                    Log.d("Auto2048", "Solver best=$bestMove depth=$maxDepthReached/${MAX_DEPTH} ${totalMs}ms evals=$evalCount hits=$cacheHits cache=${cache.size} maxNodes=$maxNodeCount chanceNodes=$chanceNodeCount")
+                    Logger.d("Solver", "Solver best=$bestMove depth=$maxDepthReached/${MAX_DEPTH} ${totalMs}ms evals=$evalCount hits=$cacheHits cache=${cache.size} maxNodes=$maxNodeCount chanceNodes=$chanceNodeCount")
                 } catch (_: RuntimeException) {
                     // android.util.Log.d throws "Method d in android.util.Log not
                     // mocked" in plain JVM tests - silently drop it there.

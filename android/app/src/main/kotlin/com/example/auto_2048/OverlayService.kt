@@ -9,7 +9,6 @@ import android.graphics.*
 import android.os.Build
 import android.os.IBinder
 import android.util.DisplayMetrics
-import android.util.Log
 import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
@@ -80,9 +79,9 @@ class OverlayService : Service() {
         try {
             addOverlayView()
             instance = this
-            Log.i("Auto2048", "OverlayService: overlay attached successfully, screen=${screenWidth}x${screenHeight}")
+            Logger.i("Overlay", "OverlayService: overlay attached successfully, screen=${screenWidth}x${screenHeight}")
         } catch (e: Exception) {
-            Log.e("Auto2048", "Unable to attach overlay", e)
+            Logger.e("Overlay", "Unable to attach overlay", e)
             overlayView = null
             instance = null
             stopSelf()
@@ -173,13 +172,13 @@ class OverlayService : Service() {
 
     fun setCalibrationMode(enabled: Boolean) {
         isCalibrationMode = enabled
-        Log.i("Auto2048", "OverlayService.setCalibrationMode: enabled=$enabled, overlayView=${overlayView != null}")
+        Logger.i("Overlay", "OverlayService.setCalibrationMode: enabled=$enabled, overlayView=${overlayView != null}")
         val view = overlayView ?: return
         try {
             windowManager?.updateViewLayout(view, buildLayoutParams())
             view.postInvalidate()
         } catch (e: Exception) {
-            Log.e("Auto2048", "Unable to update calibration overlay", e)
+            Logger.e("Overlay", "Unable to update calibration overlay", e)
             isCalibrationMode = false
         }
     }
@@ -215,7 +214,7 @@ class OverlayService : Service() {
             try {
                 windowManager?.removeView(view)
             } catch (e: Exception) {
-                Log.w("Auto2048", "Overlay was already detached: ${e.message}")
+                Logger.w("Overlay", "Overlay was already detached: ${e.message}")
             }
         }
         instance = null
@@ -440,7 +439,7 @@ class OverlayService : Service() {
             OverlayService.overlayOffsetX = loc[0]
             OverlayService.overlayOffsetY = loc[1]
             if (!offsetLogged) {
-                Log.d("Auto2048", "Overlay offset: (${loc[0]},${loc[1]})")
+                Logger.d("Overlay", "Overlay offset: (${loc[0]},${loc[1]})")
                 offsetLogged = true
             }
 

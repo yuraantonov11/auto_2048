@@ -3,7 +3,6 @@ package com.example.auto_2048
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.GestureDescription
 import android.graphics.Path
-import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import kotlin.math.min
 import kotlin.random.Random
@@ -57,7 +56,7 @@ class Auto2048Service : AccessibilityService() {
             // the gesture API to dispatch.
             lineTo(x.toFloat() + 1f, y.toFloat() + 1f)
         }
-        Log.d(TAG, "performTap: x=$x, y=$y")
+        Logger.d("Service", "performTap: x=$x, y=$y")
 
         val gestureBuilder = GestureDescription.Builder()
         gestureBuilder.addStroke(GestureDescription.StrokeDescription(path, 0L, 90L))
@@ -73,7 +72,7 @@ class Auto2048Service : AccessibilityService() {
 
         val dispatched = dispatchGesture(gestureBuilder.build(), callback, null)
         if (!dispatched) {
-            Log.w(TAG, "performTap: gesture was rejected")
+            Logger.w("Service", "performTap: gesture was rejected")
             onComplete(GestureResult.FAILURE)
         }
         return dispatched
@@ -91,7 +90,7 @@ class Auto2048Service : AccessibilityService() {
      */
     fun performSwipe(direction: String, onComplete: (GestureResult) -> Unit): Boolean {
         val path = buildSwipePath(direction)
-        Log.d(TAG, "performSwipe: direction=$direction, path=$path")
+        Logger.d("Service", "performSwipe: direction=$direction, path=$path")
 
         val gestureBuilder = GestureDescription.Builder()
         val startDelay = Random.nextLong(0L, 36L)
@@ -109,7 +108,7 @@ class Auto2048Service : AccessibilityService() {
 
         val dispatched = dispatchGesture(gestureBuilder.build(), callback, null)
         if (!dispatched) {
-            Log.w(TAG, "performSwipe: gesture was rejected")
+            Logger.w("Service", "performSwipe: gesture was rejected")
             onComplete(GestureResult.FAILURE)
         }
         return dispatched

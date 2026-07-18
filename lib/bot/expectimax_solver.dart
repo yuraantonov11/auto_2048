@@ -9,17 +9,21 @@ library;
 
 import 'dart:math' as math;
 
+import 'bot_config.dart';
 import 'exceptions.dart';
 import 'heuristics.dart';
 
 /// Tunables for [ExpectimaxSolver].
 ///
 /// Mirrors the native solver's configuration knobs but keeps the
-/// surface small and explicit.
+/// surface small and explicit. Defaults are sourced from the
+/// top-level constants in `bot_config.dart` (`kSolverDepth`,
+/// `kSolverTimeBudget`) so the Dart and native paths stay in
+/// lock-step.
 final class ExpectimaxConfig {
   const ExpectimaxConfig({
-    this.depth = 5,
-    this.timeBudget = const Duration(milliseconds: 1500),
+    this.depth = kSolverDepth,
+    this.timeBudget = kSolverTimeBudget,
     this.heuristics = const HeuristicsConfig(),
   }) : assert(depth > 0, 'depth must be > 0');
 

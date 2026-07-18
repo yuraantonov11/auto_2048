@@ -1,0 +1,106 @@
+# GitHub Actions CI for auto_2048.
+#
+# Runs on every push and pull request to `master` / `main`. Three jobs:
+#
+#   * `flutter` — `flutter pub get`, `flutter analyze`, `flutter test`.
+#     Catches Dart-side regressions (lint drift, broken heuristics,
+#     expectimax / detector regressions).
+#   * `android-unit-tests` — `./gradlew :app:testDebugUnitTest` for the
+#     Kotlin GameSolver / terminal-state / unknown-cell unit tests.
+#   * `android-build` — sanity-check that the APK still assembles so we
+#     catch permission / manifest regressions before they reach a
+#     release run.
+name: ci
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  flutter:
+    name: Flutter analyze + test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: '3.24.5'
+
+      - name: Cache pub
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.pub-cache
+            .dart_tool/package_config.json
+          key: ${{ runner.os }}-pub-${{ hashFiles('**/pubspec.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pub-
+
+      - name: pub get
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze --no-fatal-infos
+
+      - name: Test
+        run: flutter test --reporter expanded
+
+  android-unit-tests:
+    name: Android unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x android/gradlew
+
+      - name: Run unit tests
+        run: cd android && ./gradlew :app:testDebugUnitTest --stacktrace
+
+  android-build:
+    name: Android assemble (debug)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    needs: [flutter, android-unit-tests]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: '3.24.5'
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: pub get
+        run: flutter pub get
+
+      - name: Build debug APK
+        run: |
+          flutter build apk --debug --no-tree-shake-icons \
+            --dart-define=CI=true

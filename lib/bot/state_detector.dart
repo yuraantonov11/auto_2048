@@ -26,6 +26,7 @@ library;
 
 import 'dart:async';
 
+import 'bot_config.dart';
 import 'exceptions.dart';
 import 'game_state.dart';
 import 'heuristics.dart';
@@ -67,12 +68,28 @@ final class NativeScreenProbe implements ScreenStateProbe {
 
 /// Pure-Dart probe that inspects the last observed grid when the
 /// native bridge is unavailable or returns nothing.
+///
+/// The grid is injected through [seed] right before each detection
+/// cycle, replacing the old `_GridHeuristicsContext.lastGrid` static
+/// field. Keeping the grid per-call (instead of per-instance) means a
+/// fresh detector never accidentally reads a stale grid from a
+/// previous game.
 final class GridHeuristicsProbe implements ScreenStateProbe {
-  const GridHeuristicsProbe();
+  // Not const: the probe carries a mutable grid set via [seed].
+  GridHeuristicsProbe();
+
+  /// Most recent 16-cell grid handed to the probe via [seed]. Cleared
+  /// at the start of every cycle so a probe that ran out of order
+  /// never reports a misleading snapshot.
+  // ignore: prefer_final_fields
+  List<int>? _lastGrid;
+
+  /// Updates the grid the probe will inspect on its next [probe] call.
+  void seed(List<int>? grid) => _lastGrid = grid;
 
   @override
   Future<GameStateSnapshot?> probe() async {
-    final grid = _GridHeuristicsContext.lastGrid;
+    final grid = _lastGrid;
     return grid == null ? null : analyze(grid);
   }
 
@@ -82,7 +99,7 @@ final class GridHeuristicsProbe implements ScreenStateProbe {
     final maxTile = Heuristics.maxTile(grid);
     final maxIdx = Heuristics.maxTileIndex(grid);
     final empty = Heuristics.emptyCells(grid);
-    final anchor = kDefaultAnchorCorner;
+    const anchor = kDefaultAnchorCorner;
     final reasons = <String>[];
 
     if (maxTile >= 2048) {
@@ -122,12 +139,6 @@ final class GridHeuristicsProbe implements ScreenStateProbe {
       grid: grid,
     );
   }
-}
-
-/// Side-channel grid input used by [GridHeuristicsProbe]. Lives in a
-/// dedicated namespace so the probe interface stays parameterless.
-class _GridHeuristicsContext {
-  static List<int>? lastGrid;
 }
 
 // ──────────────────────────── Result types ─────────────────────────────
@@ -207,8 +218,8 @@ final class SnapshotMerger {
 /// Coordinates of the in-game "Restart" button in normalized space.
 final class RestartCoordinates {
   const RestartCoordinates({
-    this.primary = const NormalizedPoint(0.5, 0.78),
-    this.fallback = const NormalizedPoint(0.5, 0.62),
+    this.primary = kRestartPrimary,
+    this.fallback = kRestartFallback,
   });
 
   /// First-tap target (Try Again / Keep Going dialogs).
@@ -240,7 +251,7 @@ final class RestartTapper {
 final class RestartTapperConfig {
   const RestartTapperConfig({
     this.coordinates = const RestartCoordinates(),
-    this.tapDelay = const Duration(milliseconds: 350),
+    this.tapDelay = kRestartTapDelay,
   });
 
   final RestartCoordinates coordinates;
@@ -282,9 +293,8 @@ final class StateActionMapper {
 /// Tunables for [StateDetector].
 final class DetectorConfig {
   const DetectorConfig({
-    this.minConfidence = 0.6,
-    this.waitDelay = const Duration(milliseconds: 400),
-    this.gridProbe = const GridHeuristicsProbe(),
+    this.minConfidence = kMinConfidence,
+    this.waitDelay = kDetectorWaitDelay,
     this.merger = const SnapshotMerger(),
     this.restart = const RestartTapperConfig(),
   });
@@ -295,9 +305,6 @@ final class DetectorConfig {
   /// Default delay before re-probing when the detector returns
   /// [WaitResult].
   final Duration waitDelay;
-
-  /// Pure-Dart fallback used when no other probe produces a snapshot.
-  final GridHeuristicsProbe gridProbe;
 
   /// Merger used to combine probe outputs.
   final SnapshotMerger merger;
@@ -320,7 +327,7 @@ final class StateDetector {
       : _probes = probes ??
             <ScreenStateProbe>[
               NativeScreenProbe(bridge),
-              const GridHeuristicsProbe(),
+                            GridHeuristicsProbe(),
             ],
         _config = config,
         _mapper = StateActionMapper(
@@ -337,11 +344,13 @@ final class StateDetector {
   /// Runs the pre-check. `lastGrid` is the most recently observed
   /// 16-cell grid; it powers the pure-Dart fallback probe.
   Future<DetectorResult> detect({List<int>? lastGrid}) async {
-    _GridHeuristicsContext.lastGrid = lastGrid;
-    final snapshots = <GameStateSnapshot?>[
-      for (final p in _probes) await p.probe(),
-    ];
-    final merged = _config.merger.merge(snapshots, _probes);
+      for (final p in _probes) {
+        if (p is GridHeuristicsProbe) p.seed(lastGrid);
+      }
+      final snapshots = <GameStateSnapshot?>[
+        for (final p in _probes) await p.probe(),
+      ];
+      final merged = _config.merger.merge(snapshots, _probes);
 
     if (merged == null) {
       return WaitResult(

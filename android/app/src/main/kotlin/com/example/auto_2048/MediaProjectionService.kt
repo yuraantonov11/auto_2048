@@ -6,7 +6,6 @@ import android.content.Intent
 import android.os.Build
 import android.os.IBinder
 import android.os.SystemClock
-import android.util.Log
 import androidx.core.app.NotificationCompat
 
 class MediaProjectionService : Service() {
@@ -80,7 +79,7 @@ class MediaProjectionService : Service() {
             }
             isForeground = true
         } catch (security: SecurityException) {
-            Log.w(TAG, "MediaProjection FGS rejected (token likely revoked): ${security.message}")
+            Logger.w("Projection", "MediaProjection FGS rejected (token likely revoked): ${security.message}")
             isForeground = false
             // Stop the service so MainActivity's cleanup() releases any
             // partial state and the user is prompted for a fresh token.

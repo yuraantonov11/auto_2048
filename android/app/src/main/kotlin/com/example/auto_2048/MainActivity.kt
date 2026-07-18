@@ -16,7 +16,6 @@ import android.os.Handler
 import android.os.HandlerThread
 import android.os.Looper
 import android.provider.Settings
-import android.util.Log
 import android.util.DisplayMetrics
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -149,7 +148,7 @@ class MainActivity : FlutterActivity() {
                 val automatic = call.argument<Boolean>("automatic") ?: true
                 solverSpeed = (call.argument<Double>("speed") ?: solverSpeed).coerceIn(0.0, maxSpeed)
                 prefs.edit().putFloat(KEY_SOLVER_SPEED, solverSpeed.toFloat()).apply()
-                            Log.i(TAG, "startSolver MethodChannel called: automatic=$automatic speed=$solverSpeed")
+                            Logger.i("Main", "startSolver MethodChannel called: automatic=$automatic speed=$solverSpeed")
                             startSolverLoop(automatic, result)
                         }
             "stopSolver" -> {
@@ -198,7 +197,7 @@ class MainActivity : FlutterActivity() {
     }
 
     private fun handleSetCalibrationMode(enabled: Boolean, result: Result) {
-        Log.i(TAG, "handleSetCalibrationMode: enabled=$enabled, hasOverlayPermission=${Settings.canDrawOverlays(this)}")
+        Logger.i("Main", "handleSetCalibrationMode: enabled=$enabled, hasOverlayPermission=${Settings.canDrawOverlays(this)}")
         if (enabled && android.os.Build.VERSION.SDK_INT >= 23 && !Settings.canDrawOverlays(this)) {
             result.error("OVERLAY_REQUIRED", "Allow the overlay to calibrate the board", null)
             return
@@ -206,7 +205,7 @@ class MainActivity : FlutterActivity() {
 
         try {
             if (enabled && OverlayService.instance == null) {
-                Log.i(TAG, "handleSetCalibrationMode: starting OverlayService")
+                Logger.i("Main", "handleSetCalibrationMode: starting OverlayService")
                 startService(Intent(this, OverlayService::class.java))
             }
             mainHandler.postDelayed({
@@ -216,7 +215,7 @@ class MainActivity : FlutterActivity() {
             if (!enabled) stopCalibrationScanLoop()
             result.success(true)
         } catch (e: Exception) {
-            Log.e(TAG, "Unable to start calibration overlay", e)
+            Logger.e("Main", "Unable to start calibration overlay", e)
             result.error("OVERLAY_FAIL", e.message, null)
         }
     }
@@ -256,7 +255,7 @@ class MainActivity : FlutterActivity() {
     }
 
     private fun handleSetDebugMode(enabled: Boolean, result: Result) {
-        Log.i(TAG, "handleSetDebugMode: enabled=$enabled, hasOverlayPermission=${Settings.canDrawOverlays(this)}")
+        Logger.i("Main", "handleSetDebugMode: enabled=$enabled, hasOverlayPermission=${Settings.canDrawOverlays(this)}")
         if (enabled && android.os.Build.VERSION.SDK_INT >= 23 && !Settings.canDrawOverlays(this)) {
             val intent = Intent(
                 Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
@@ -269,14 +268,14 @@ class MainActivity : FlutterActivity() {
 
         try {
             if (enabled && OverlayService.instance == null) {
-                Log.i(TAG, "handleSetDebugMode: starting OverlayService")
+                Logger.i("Main", "handleSetDebugMode: starting OverlayService")
                 startService(Intent(this, OverlayService::class.java))
             }
             OverlayService.debugMode = enabled
             OverlayService.instance?.refresh()
             result.success(true)
         } catch (e: Exception) {
-            Log.e(TAG, "Unable to change debug overlay", e)
+            Logger.e("Main", "Unable to change debug overlay", e)
             result.error("OVERLAY_FAIL", e.message, null)
         }
     }
@@ -301,7 +300,7 @@ class MainActivity : FlutterActivity() {
                 try {
                     startService(Intent(this, OverlayService::class.java))
                 } catch (e: Exception) {
-                    Log.e(TAG, "Unable to start hint overlay", e)
+                    Logger.e("Main", "Unable to start hint overlay", e)
                     result.error("OVERLAY_FAIL", e.message, null)
                     return
                 }
@@ -347,7 +346,7 @@ class MainActivity : FlutterActivity() {
     }
 
     private fun runSolverIteration(generation: Int) {
-            Log.d(TAG, "runSolverIteration: enter solverRunning=$solverRunning gen=$generation match=${generation == solverGeneration} iterInProgress=$solverIterationInProgress")
+            Logger.d("Main", "runSolverIteration: enter solverRunning=$solverRunning gen=$generation match=${generation == solverGeneration} iterInProgress=$solverIterationInProgress")
             if (!solverRunning || generation != solverGeneration || solverIterationInProgress) return
         solverIterationInProgress = true
         if (!solverAutomatic) {
@@ -372,7 +371,7 @@ class MainActivity : FlutterActivity() {
                         when (status) {
                             "restarted" -> {
                                 val terminalState = res["state"] as? String ?: "unknown"
-                                Log.i(TAG, "Solver restarted game from $terminalState state")
+                                Logger.i("Main", "Solver restarted game from $terminalState state")
                                 "RESTARTED"
                             }
                             "terminal" -> {
@@ -380,7 +379,7 @@ class MainActivity : FlutterActivity() {
                                 // modal was visible (rare - typically an
                                 // OCR-only detection). Stop the loop so
                                 // the user can see the final position.
-                                Log.w(TAG, "Solver saw terminal board; pausing iteration")
+                                Logger.w("Main", "Solver saw terminal board; pausing iteration")
                                 stopSolverLoop("Terminal board reached")
                                 "NONE"
                             }
@@ -459,7 +458,7 @@ class MainActivity : FlutterActivity() {
                         }
                     }
                 } catch (e: Exception) {
-                    Log.e(TAG, "Swipe dispatch failed", e)
+                    Logger.e("Main", "Swipe dispatch failed", e)
                     VisionProcessor.clearExpectedBoard()
                     gestureFinished = true
                     solverLastError = e.message ?: "Swipe dispatch failed"
@@ -550,7 +549,7 @@ class MainActivity : FlutterActivity() {
             // DEFAULT_* constants as if they were user-saved would lock the
             // bot onto the wrong region (e.g. only the top half of the
             // ftband 2048 field).
-            Log.d("Auto2048", "applySavedCalibration: no saved values, deferring to auto-detector")
+            Logger.d("Main", "applySavedCalibration: no saved values, deferring to auto-detector")
         }
     }
 
@@ -576,13 +575,13 @@ class MainActivity : FlutterActivity() {
             if (show) startService(intent) else stopService(intent)
             result.success(null)
         } catch (e: Exception) {
-            Log.e(TAG, "Unable to change overlay state", e)
+            Logger.e("Main", "Unable to change overlay state", e)
             result.error("OVERLAY_FAIL", e.message, null)
         }
     }
 
     private fun handleSolveStep(result: Result) {
-            Log.d(TAG, "handleSolveStep: enter")
+            Logger.d("Main", "handleSolveStep: enter")
             // Terminal-state pre-check: if the screen shows "You Win" or
         // "Game Over" we MUST stop the solver, simulate a tap on the
         // restart button and report the outcome to Dart. Doing OCR on
@@ -591,7 +590,7 @@ class MainActivity : FlutterActivity() {
         screenProbe.probe(mediaProjection) { outcome, _ ->
             when (outcome) {
                 ScreenProbeOutcome.GameOver -> {
-                    Log.i(TAG, "Pre-check: Game Over detected, restarting")
+                    Logger.i("Main", "Pre-check: Game Over detected, restarting")
                     restartAfterTerminal(wasWon = false) { status, error ->
                         if (status == "ok") {
                             result.success(mapOf("status" to "restarted", "state" to "gameover"))
@@ -602,7 +601,7 @@ class MainActivity : FlutterActivity() {
                     return@probe
                 }
                 ScreenProbeOutcome.Won -> {
-                    Log.i(TAG, "Pre-check: 2048 Win detected, restarting")
+                    Logger.i("Main", "Pre-check: 2048 Win detected, restarting")
                     restartAfterTerminal(wasWon = true) { status, error ->
                         if (status == "ok") {
                             result.success(mapOf("status" to "restarted", "state" to "won"))
@@ -636,8 +635,8 @@ class MainActivity : FlutterActivity() {
                         // we can do.
                         val fallbackAgeMs = android.os.SystemClock.elapsedRealtime() - lastReliableGridTimestampMs
                         if (lastReliableGrid.size == 16 && fallbackAgeMs in 0..gridFallbackMaxAgeMs) {
-                            Log.d(
-                                TAG,
+                            Logger.d(
+                                                            "Main",
                                 "OCR frame incomplete (age=${fallbackAgeMs}ms), using fallback grid"
                             )
                             val worker = projectionHandler ?: run {
@@ -716,7 +715,7 @@ class MainActivity : FlutterActivity() {
             }
             val forbidMove = if (stuckCount >= stuckThreshold) {
                 stuckForbiddenMove.also {
-                    Log.w(TAG, "Stuck detector: grid & move unchanged for " +
+                    Logger.w("Main", "Stuck detector: grid & move unchanged for " +
                         "$stuckCount iterations, forbidding $it")
                 }
             } else {
@@ -732,7 +731,7 @@ class MainActivity : FlutterActivity() {
             // stale.
             if (stuckCount >= stuckThreshold && GameConfig.isManualMode) {
                 VisionProcessor.forceAutoDetect = true
-                Log.w(TAG, "Stuck detector: forcing board re-detect (manual mode, stale bounds?)")
+                Logger.w("Main", "Stuck detector: forcing board re-detect (manual mode, stale bounds?)")
                 stuckCount = 0
                 stuckForbiddenMove = "NONE"
             }
@@ -760,12 +759,12 @@ class MainActivity : FlutterActivity() {
                         result.success(move)
                     }
                 } catch (e: Exception) {
-                    Log.e(TAG, "Solve failed", e)
+                    Logger.e("Main", "Solve failed", e)
                     mainHandler.post { result.error("SOLVE_FAIL", e.message, null) }
                 }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Solve pipeline failed", e)
+            Logger.e("Main", "Solve pipeline failed", e)
             result.error("SOLVE_FAIL", e.message, null)
         }
     }
@@ -872,18 +871,18 @@ class MainActivity : FlutterActivity() {
         
         // Якщо сесія вже працює — просто робимо скріншот
         if (mediaProjection != null && imageReader != null && virtualDisplay != null) {
-            Log.d(TAG, "Using active projection session")
+            Logger.d("Main", "Using active projection session")
             startAnalysis(result)
             return
         }
 
         // Якщо є збережений токен, пробуємо ініціалізувати (але Android 14 може це заблокувати)
         if (data != null) {
-            Log.d(TAG, "Found cached token, trying to init session...")
+            Logger.d("Main", "Found cached token, trying to init session...")
             startFlow(result)
         } else {
             // Токена немає — просимо дозвіл у користувача
-            Log.d(TAG, "No token found, requesting fresh permission")
+            Logger.d("Main", "No token found, requesting fresh permission")
             val manager = mediaProjectionManager
             if (manager != null) {
                 pendingCaptureResult = result
@@ -905,7 +904,7 @@ class MainActivity : FlutterActivity() {
             MediaProjectionService.start(this)
         } catch (e: Exception) {
             captureInitializationInProgress = false
-            Log.e(TAG, "Unable to start projection service", e)
+            Logger.e("Main", "Unable to start projection service", e)
             result.error("FAIL", "Unable to start screen capture service: ${e.message}", null)
             return
         }
@@ -915,7 +914,7 @@ class MainActivity : FlutterActivity() {
             val success = try {
                 MediaProjectionService.awaitForeground() && initCapture()
             } catch (e: Exception) {
-                Log.e(TAG, "Capture initialization failed", e)
+                Logger.e("Main", "Capture initialization failed", e)
                 false
             }
 
@@ -954,7 +953,7 @@ class MainActivity : FlutterActivity() {
             
             mp.registerCallback(object : MediaProjection.Callback() {
                 override fun onStop() {
-                    Log.d(TAG, "MediaProjection STOPPED externally")
+                    Logger.d("Main", "MediaProjection STOPPED externally")
                     mainHandler.post {
                         // Clear the cached permission data so the next capture
                         // request triggers a fresh user consent prompt instead
@@ -976,17 +975,17 @@ class MainActivity : FlutterActivity() {
             virtualDisplay = mp.createVirtualDisplay("BotCap", screenWidth, screenHeight, screenDensity, 
                 DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR, imageReader!!.surface, null, h)
             
-            Log.d(TAG, "Session initialized successfully")
+            Logger.d("Main", "Session initialized successfully")
             return true
         } catch (e: Exception) { 
-            Log.e(TAG, "CRITICAL: Init fail: ${e.message}")
+            Logger.e("Main", "CRITICAL: Init fail: ${e.message}")
             return false
         }
     }
 
     private fun startAnalysis(result: Result) {
         val reader = imageReader ?: run {
-            Log.e(TAG, "Reader is null")
+            Logger.e("Main", "Reader is null")
             result.error("FAIL", "No reader", null)
             return
         }
@@ -1002,7 +1001,7 @@ class MainActivity : FlutterActivity() {
         captureInProgress = true
         val overlayVisible = OverlayService.instance != null
         OverlayService.instance?.setCaptureSuppressed(true)
-        Log.d(TAG, "Requested frame analysis...")
+        Logger.d("Main", "Requested frame analysis...")
 
         mainHandler.postDelayed({
             handler.post {
@@ -1024,7 +1023,7 @@ class MainActivity : FlutterActivity() {
                     }
 
                     availableReader.setOnImageAvailableListener(null, null)
-                    Log.d(TAG, "Frame received after ${android.os.SystemClock.elapsedRealtime() - startTime}ms")
+                    Logger.d("Main", "Frame received after ${android.os.SystemClock.elapsedRealtime() - startTime}ms")
 
                     try {
                         val bitmap = imageToBitmap(image)
@@ -1050,7 +1049,7 @@ class MainActivity : FlutterActivity() {
                             result.success("GRID_STATE:" + grid.joinToString(","))
                         }
                     } catch (e: Exception) {
-                        Log.e(TAG, "Frame analysis failed", e)
+                        Logger.e("Main", "Frame analysis failed", e)
                         mainHandler.post {
                             captureInProgress = false
                             if (overlayVisible) OverlayService.instance?.setCaptureSuppressed(false)
@@ -1063,7 +1062,7 @@ class MainActivity : FlutterActivity() {
 
                 mainHandler.postDelayed({
                     if (completed.compareAndSet(false, true)) {
-                        Log.w(TAG, "Analysis TIMEOUT - no frames delivered")
+                        Logger.w("Main", "Analysis TIMEOUT - no frames delivered")
                         reader.setOnImageAvailableListener(null, null)
                         captureInProgress = false
                         if (overlayVisible) OverlayService.instance?.setCaptureSuppressed(false)

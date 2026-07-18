@@ -232,7 +232,7 @@ void main() {
         0.9,
         'high',
       );
-      final merged = merger.merge(<GameStateSnapshot?>[lo, hi], const [
+      final merged = merger.merge(<GameStateSnapshot?>[lo, hi], [
         GridHeuristicsProbe(),
         GridHeuristicsProbe(),
       ]);
@@ -243,7 +243,7 @@ void main() {
       const merger = SnapshotMerger();
       final merged = merger.merge(
         const <GameStateSnapshot?>[null, null],
-        const [GridHeuristicsProbe(), GridHeuristicsProbe()],
+              [GridHeuristicsProbe(), GridHeuristicsProbe()],
       );
       expect(merged, isNull);
     });
@@ -260,7 +260,7 @@ void main() {
         0.5,
         'second',
       );
-      final merged = merger.merge(<GameStateSnapshot?>[first, second], const [
+      final merged = merger.merge(<GameStateSnapshot?>[first, second], [
         GridHeuristicsProbe(),
         GridHeuristicsProbe(),
       ]);
