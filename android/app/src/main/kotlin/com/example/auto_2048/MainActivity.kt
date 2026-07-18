@@ -101,10 +101,10 @@ class MainActivity : FlutterActivity() {
         private const val KEY_X1 = "x1_frac"
         private const val KEY_X2 = "x2_frac"
         private const val KEY_SOLVER_SPEED = "solver_speed"
-        private const val DEFAULT_Y1 = 0.31
-        private const val DEFAULT_Y2 = 0.71
-        private const val DEFAULT_X1 = 0.08
-        private const val DEFAULT_X2 = 0.92
+        private const val DEFAULT_Y1 = 0.250
+        private const val DEFAULT_Y2 = 0.928
+        private const val DEFAULT_X1 = 0.000
+        private const val DEFAULT_X2 = 0.981
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -126,6 +126,16 @@ class MainActivity : FlutterActivity() {
         prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         screenProbe = ScreenProbe()
         solverSpeed = prefs.getFloat(KEY_SOLVER_SPEED, 0.55f).toDouble().coerceIn(0.0, maxSpeed)
+        // Ensure prefs always have our latest default fractions so fresh installs
+        // or devices without saved calibration get correct bounds immediately.
+        if (!prefs.contains(KEY_Y1)) {
+            prefs.edit()
+                .putFloat(KEY_Y1, DEFAULT_Y1.toFloat())
+                .putFloat(KEY_Y2, DEFAULT_Y2.toFloat())
+                .putFloat(KEY_X1, DEFAULT_X1.toFloat())
+                .putFloat(KEY_X2, DEFAULT_X2.toFloat())
+                .apply()
+        }
         applySavedCalibration()
 
         if (android.os.Build.VERSION.SDK_INT >= 33) {
