@@ -47,9 +47,5 @@ app.*.map.json
 # Widget Preview related
 .widget_preview/
 
-# Auto-generated test/debug files
-100
-200
-
 # Copilot agents (local only)
 .github/agents/
