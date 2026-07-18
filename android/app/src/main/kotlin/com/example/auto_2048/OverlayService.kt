@@ -370,12 +370,13 @@ class OverlayService : Service() {
         private fun moveCorner(corner: Int, x: Float, y: Float) {
             val offsetX = overlayOffsetX.toFloat()
             val offsetY = overlayOffsetY.toFloat()
-            val sw = width.toFloat()
-            val sh = height.toFloat()
+            // Use full screen dimensions (not overlay view bounds) so handles
+            // can be dragged all the way to the physical screen edge even when
+            // the overlay view is inset by system bars.
+            val screenRight = screenWidth.toFloat()
+            val screenBottom = screenHeight.toFloat()
             val screenX = x + offsetX
             val screenY = y + offsetY
-            val screenRight = offsetX + sw
-            val screenBottom = offsetY + sh
             val xe = GameConfig.detectedXEnd.toFloat()
             val xs = GameConfig.detectedXStart.toFloat()
             val ye = GameConfig.detectedYEnd.toFloat()
@@ -453,13 +454,23 @@ class OverlayService : Service() {
             val x2 = (GameConfig.detectedXEnd - overlayOffsetX).toFloat()
             val y2 = (GameConfig.detectedYEnd - overlayOffsetY).toFloat()
 
-            if (y1 >= 0 && y2 > y1 && x2 > x1) {
+            // Clamp to canvas (screen) bounds so the frame is always visible
+            // even when calibration was done on a different device or after
+            // a screen configuration change.
+            val clampedX1 = x1.coerceIn(0f, canvas.width.toFloat())
+            val clampedY1 = y1.coerceIn(0f, canvas.height.toFloat())
+            val clampedX2 = x2.coerceIn(0f, canvas.width.toFloat())
+            val clampedY2 = y2.coerceIn(0f, canvas.height.toFloat())
+
+            if (clampedY1 >= 0 && clampedY2 > clampedY1 && clampedX2 > clampedX1) {
                 if (debugMode || isCalibrationMode) {
-                    canvas.drawRect(x1, y1, x2, y2, paintFrame)
+                    canvas.drawRect(clampedX1, clampedY1, clampedX2, clampedY2, paintFrame)
                 }
 
-                val cellH = (y2 - y1) / 4f
-                val cellW = (x2 - x1) / 4f
+                // Use clamped coordinates for all cell calculations so grid
+                // numbers stay within screen bounds.
+                val cellH = (clampedY2 - clampedY1) / 4f
+                val cellW = (clampedX2 - clampedX1) / 4f
 
                 val grid = OverlayService.lastDetectedGrid
                 if (debugMode && grid.size == 16) {
@@ -471,9 +482,9 @@ class OverlayService : Service() {
                         for (col in 0..3) {
                             val index = row * 4 + col
                             val v = grid[index]
-                            val tx = x1 + (col * cellW) + (cellW / 2f)
+                            val tx = clampedX1 + (col * cellW) + (cellW / 2f)
                             // Proper vertical centring using font metrics
-                            val cy = y1 + (row * cellH) + (cellH / 2f)
+                            val cy = clampedY1 + (row * cellH) + (cellH / 2f)
                             val ty = cy - (paintText.descent() + paintText.ascent()) / 2f
                             paintText.color = if (index in uncertainCells) Color.RED else Color.YELLOW
                             // Draw dark outline first, then debug value on top
@@ -497,20 +508,20 @@ class OverlayService : Service() {
                 }
 
                 if (!isCalibrationMode && hintState != "IDLE") {
-                    drawHintStatus(canvas, x1, y1, x2)
+                    drawHintStatus(canvas, clampedX1, clampedY1, clampedX2)
                 }
 
                 if (currentHint != "NONE" && !isCalibrationMode &&
                     (hintState == "READY" || hintState == "READY_NEW")) {
-                    drawHint(canvas, x1, y1, x2, y2)
+                    drawHint(canvas, clampedX1, clampedY1, clampedX2, clampedY2)
                 }
 
                 if (isCalibrationMode) {
                     val preview = OverlayService.calibrationGrid
                     if (preview.size == 16) {
-                        drawCalibrationPreview(canvas, x1, y1, x2, y2, cellW, cellH, preview)
+                        drawCalibrationPreview(canvas, clampedX1, clampedY1, clampedX2, clampedY2, cellW, cellH, preview)
                     }
-                    drawHandles(canvas, x1, y1, x2, y2)
+                    drawHandles(canvas, clampedX1, clampedY1, clampedX2, clampedY2)
                     drawCalibrationButtons(canvas)
                 }
             }
